@@ -1,0 +1,35 @@
+#!ipxe
+
+set archlinux_mirror mirrors.kernel.org
+set archlinux_base_dir archlinux
+
+set os_arch ${arch}
+iseq ${os_arch} x86_64 && set os_arch x86_64 ||
+isset ${dhcp-server} || goto static_ip
+# set ipparam BOOTIF=${netX/mac} ip=dhcp
+set ipparam BOOTIF=${netX/mac} ip=dhcp
+set real_archlinux_mirror ${archlinux_mirror}
+goto boot
+
+:static_ip
+# Arch Linux cannot use DNS if booted with a static IP
+nslookup real_archlinux_mirror ${archlinux_mirror}
+set ipparam BOOTIF=${netX/mac} ip=${ip}::${gateway}:${netmask}
+
+:boot
+imgfree
+set dir ${archlinux_base_dir}/iso/${arch_version}/arch/boot
+iseq ${platform} efi && set xserv lenodium || set xserv hpdium
+# set params archiso_http_srv=http://10.0.0.150:8080/archlinux/ archisobasedir=arch cms_verify=y ${ipparam} net.ifnames=0 initrd=initrd.magic ${cmdline}
+set params nfsroot=10.0.0.150:/${xserv} archisobasedir=arch cms_verify=y ${ipparam} net.ifnames=0 initrd=initrd.magic ${cmdline}
+kernel http://10.0.0.150:8080/archlinux/vmlinuz-linux-latest ${params}
+initrd http://10.0.0.150:8080/archlinux/initramfs-linux
+echo
+echo MD5sums:
+md5sum vmlinuz-linux-latest initramfs-linux
+boot
+goto archlinux_exit
+
+:archlinux_exit
+clear menu
+exit 0
